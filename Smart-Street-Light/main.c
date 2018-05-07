@@ -3,7 +3,7 @@
  *
  * Created: 05-05-2018 17:05:32
  * Author : vivek
- */ 
+ */
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -44,11 +44,11 @@ int main(void)
 	intensity_percent = eeprom_read_byte(&intensity);
 	DDRB |= 1<<3;
 	PORTB |= 1<<3;
-		
+
 	GICR=3<<INT0;			// External Interrupt Enable
 	MCUCR=0xF;	// Rising Edge
 	TCCR2 = 0x68;
-		
+
 	sei();
 	while (1)
 	{
@@ -75,7 +75,7 @@ void command_routine(){
 	uint8_t temp[3];
 
 	USART_Initialise(USART_Character_Size_8|USART_Tx_Enable|USART_Rx_Enable);
-	
+
 	while (1)
 	{
 		USART_printf("1.SetTime\r");
@@ -87,7 +87,7 @@ void command_routine(){
 		USART_printf("7.Exit\r");
 		USART_Receive(cmd,1);
 		while(USART_Status_Flag & USART_Rx_Busy){}
-			
+
 		switch(cmd[0]){
 			case '1':
 				USART_printf("\rSetTime as HH MM SS\r");
