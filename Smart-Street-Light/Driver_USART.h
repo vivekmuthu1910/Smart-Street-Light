@@ -11,7 +11,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-
+#include <stdio.h>
 
 #ifndef F_CPU
 #  error "Driver_USART.h requires F_CPU to be defined"
@@ -42,6 +42,7 @@
 
 extern void USART_Initialise(uint16_t Control);
 extern void USART_Transmit(void * data, uint8_t len);
+extern void USART_printf(const char *fmt, ...);
 extern void USART_Receive(void * data, uint8_t len);
 
 #define USART_Tx_Busy 1

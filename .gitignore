@@ -51,3 +51,5 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+Test_EEPROM/

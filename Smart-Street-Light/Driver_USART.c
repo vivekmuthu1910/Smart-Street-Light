@@ -66,3 +66,13 @@ void USART_Receive(void * data, uint8_t len){
 	UCSRB |= 1<<RXCIE;
 	USART_Status_Flag |= USART_Rx_Busy;
 }
+
+void USART_printf(const char *fmt, ...){
+	char out[30], len;
+	va_list ap;
+	va_start(ap,fmt);
+	len = vsprintf(out,fmt,ap);
+	va_end(ap);
+	USART_Transmit(out,len);
+	while(USART_Status_Flag & USART_Tx_Busy){}
+}
