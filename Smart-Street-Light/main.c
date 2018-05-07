@@ -19,7 +19,6 @@ uint8_t EEMEM pwm_time[] = {20,30};
 uint8_t EEMEM intensity = 12;
 
 uint8_t time_compare(TIME,TIME);
-void normal_routine(void);
 void command_routine(void);
 
 TIME int_time;
@@ -27,10 +26,41 @@ volatile uint8_t pwm_set=0;
 
 int main(void)
 {
-	PORTD = 0x80;
-	if ((PIND & 0x80) == 0)
+	if (PIND & 8)
+	{
 		command_routine();
-	normal_routine();
+	}
+	TIME time, pwm_mode_time;
+	uint8_t intensity_percent, person_passed;
+
+	eeprom_busy_wait();
+	pwm_mode_time.hour = eeprom_read_byte(&pwm_time[0]);
+	eeprom_busy_wait();
+	pwm_mode_time.min = eeprom_read_byte(&pwm_time[1]);
+	pwm_mode_time.sec = 0;
+	pwm_set=0;
+	eeprom_busy_wait();
+	intensity_percent = eeprom_read_byte(&intensity);
+	DDRB |= 1<<3;
+	PORTB |= 1<<3;
+		
+	GICR=3<<INT0;			// External Interrupt Enable
+	MCUCR=0xF;	// Rising Edge
+	TCCR2 = 0x68;
+		
+	sei();
+	while (1)
+	{
+		DS1307_Read_Time(&time);
+		person_passed = time.sec-int_time.sec;
+		if(person_passed<0)	person_passed += 60;
+		if((!pwm_set) && time_compare(time,pwm_mode_time) && person_passed>15){
+			OCR2 = 255 * intensity_percent / 100;
+			TCCR2 = 0x6B;
+			pwm_set = 1;
+		}
+		_delay_ms(3000);
+	}
 }
 
 ISR(INT0_vect){
@@ -39,44 +69,10 @@ ISR(INT0_vect){
 	pwm_set=0;
 }
 
-void normal_routine(void){
-	TIME time, pwm_mode_time;
-    uint8_t intensity_percent, person_passed;
-
-	eeprom_busy_wait();
-    pwm_mode_time.hour = eeprom_read_byte(&pwm_time[0]);
- 	eeprom_busy_wait();
-	pwm_mode_time.min = eeprom_read_byte(&pwm_time[1]);
-    pwm_mode_time.sec = 0;
-    pwm_set=0;
-   	eeprom_busy_wait();
-	intensity_percent = eeprom_read_byte(&intensity);
-    DDRB |= 1<<3;
-    PORTB |= 1<<3;
-    
-    GICR=1<<INT0;			// External Interrupt Enable
-    MCUCR=1<<ISC01|1<<ISC00;	// Rising Edge
-    TCCR2 = 0x68;
-    
-    sei();
-    while (1)
-    {
-	    DS1307_Read_Time(&time);
-	    person_passed = time.sec-int_time.sec;
-	    if(person_passed<0)	person_passed += 60;
-	    if((!pwm_set) && time_compare(time,pwm_mode_time) && person_passed>10){
-		    OCR2 = 255 * intensity_percent / 100;
-		    TCCR2 = 0x6B;
-		    pwm_set = 1;
-	    }
-	    _delay_ms(3000);
-    }
-}
-
 void command_routine(){
 	char cmd[10], exit_loop = 0;
 	uint8_t temp[3];
-	
+
 	USART_Initialise(USART_Character_Size_8|USART_Tx_Enable|USART_Rx_Enable);
 	
 	while (1)
