@@ -28,7 +28,6 @@ ISR(USART_UDRE_vect){
 ISR(USART_RXC_vect){
 	static uint8_t received_data_len=0;
 	receive_data[received_data_len] = UDR;
-//	UDR = receive_data[received_data_len];
 	received_data_len++;
 	if(received_data_len >= receive_data_len){
 		UCSRB &= ~(1<<RXCIE);
