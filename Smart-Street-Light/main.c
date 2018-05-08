@@ -26,8 +26,9 @@ volatile uint8_t pwm_set=0;
 
 int main(void)
 {
+	USART_Initialise(USART_Character_Size_8|USART_Tx_Enable|USART_Rx_Enable);
 	PORTB |= 1<<4;
-	if (PINB & 0x10)
+	if ((PINB & 0x10)==0)
 	{
 		command_routine();
 	}
@@ -42,13 +43,15 @@ int main(void)
 	pwm_set=0;
 	eeprom_busy_wait();
 	intensity_percent = eeprom_read_byte(&intensity);
+	//USART_printf("PWM Timing: %d:%d\n",pwm_mode_time.hour,pwm_mode_time.min);
+	//USART_printf("Intensity: %d\n",intensity_percent);
+	intensity_percent = 255 * intensity_percent / 100;
+
 	DDRB |= 1<<3;
 	PORTB |= 1<<3;
-
 	GICR=3<<INT0;			// External Interrupt Enable
 	MCUCR=0xF;	// Rising Edge
 	TCCR2 = 0x68;
-
 	sei();
 	while (1)
 	{
@@ -56,7 +59,7 @@ int main(void)
 		person_passed = time.sec-int_time.sec;
 		if(person_passed<0)	person_passed += 60;
 		if((!pwm_set) && time_compare(time,pwm_mode_time) && person_passed>15){
-			OCR2 = 255 * intensity_percent / 100;
+			OCR2 = intensity_percent;
 			TCCR2 = 0x6B;
 			pwm_set = 1;
 		}
@@ -73,24 +76,21 @@ ISR(INT0_vect){
 void command_routine(){
 	char cmd[10], exit_loop = 0;
 	uint8_t temp[3];
-
-	USART_Initialise(USART_Character_Size_8|USART_Tx_Enable|USART_Rx_Enable);
-
 	while (1)
 	{
-		USART_printf("1.SetTime\r");
-		USART_printf("2.ShowTime\r");
-		USART_printf("3.SetPWMTime\r");
-		USART_printf("4.ShowPWMTime\r");
-		USART_printf("5.SetIntensity\r");
-		USART_printf("6.ShowIntensity\r");
-		USART_printf("7.Exit\r");
+		USART_printf("1.SetTime\n");
+		USART_printf("2.ShowTime\n");
+		USART_printf("3.SetPWMTime\n");
+		USART_printf("4.ShowPWMTime\n");
+		USART_printf("5.SetIntensity\n");
+		USART_printf("6.ShowIntensity\n");
+		USART_printf("7.Exit\n");
 		USART_Receive(cmd,1);
 		while(USART_Status_Flag & USART_Rx_Busy){}
 
 		switch(cmd[0]){
 			case '1':
-				USART_printf("\rSetTime as HH MM SS\r");
+				USART_printf("\nSetTime as HH MM SS\n");
 				USART_Receive(cmd,8);
 				while(USART_Status_Flag & USART_Rx_Busy){}
 				cmd[8]=0;
@@ -99,41 +99,41 @@ void command_routine(){
 				int_time.min = temp[1];
 				int_time.sec = temp[2];
 				DS1307_Set_Time(&int_time);
-				USART_printf("Time is set\r",int_time.hour,int_time.min,int_time.sec);
+				USART_printf("Time is set\n",int_time.hour,int_time.min,int_time.sec);
 				break;
 			case '2':
 				DS1307_Read_Time(&int_time);
-				USART_printf("%d:%d:%d\r",int_time.hour,int_time.min,int_time.sec);
+				USART_printf("%d:%d:%d\n",int_time.hour,int_time.min,int_time.sec);
 				break;
 			case '3':
-				USART_printf("\rSetPWMTime as HH MM\r");
+				USART_printf("\nSetPWMTime as HH MM\n");
 				USART_Receive(cmd,5);
 				while(USART_Status_Flag & USART_Rx_Busy){}
 				cmd[5]=0;
 				sscanf(cmd, "%d%d", (int *)&temp[0],(int *)&temp[1]);
 				eeprom_busy_wait();
 				eeprom_write_block(temp,pwm_time,2);
-				USART_printf("Time is set\r");
+				USART_printf("Time is set\n");
 				break;
 			case '4':
 				eeprom_busy_wait();
 				eeprom_read_block(temp,pwm_time,2);
-				USART_printf("%d:%d\r",temp[0],temp[1]);
+				USART_printf("%d:%d\n",temp[0],temp[1]);
 				break;
 			case '5':
-				USART_Transmit("\rSetIntensity as xx\r",20);
+				USART_Transmit("\nSetIntensity as xx\n",20);
 				USART_Receive(cmd,2);
 				while(USART_Status_Flag & USART_Rx_Busy){}
 				cmd[2]=0;
 				sscanf(cmd, "%d", (int *)&temp[0]);
 				eeprom_busy_wait();
 				eeprom_write_byte(&intensity,temp[0]);
-				USART_printf("Intensity Set\r");
+				USART_printf("Intensity Set\n");
 				break;
 			case '6':
 				eeprom_busy_wait();
 				temp[0]=eeprom_read_byte(&intensity);
-				USART_printf("%d\r",temp[0]);
+				USART_printf("%d\n",temp[0]);
 				break;
 			case '7': exit_loop=1;
 		}
